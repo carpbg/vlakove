@@ -66,7 +66,7 @@ a{color:var(--ac)}
 <textarea id="ta" placeholder="06:12-07:05&#10;07:40&#10;..."></textarea>
 <div class="set" style="margin-top:10px">
 <label><span id="wl"></span> (мин) <input type="number" id="walk" min="0" max="240"></label>
-<label>Резерва (мин) <input type="number" id="buf" min="0" max="60"></label>
+<label>Резерва за тази посока (мин) <input type="number" id="buf" min="0" max="60"></label>
 <label>Посоката се сменя в (ч) <input type="number" id="cut" min="1" max="23"></label>
 </div>
 <div class="lbl" style="margin:4px 0 6px">Тема</div>
@@ -155,7 +155,7 @@ const $=id=>document.getElementById(id);
 const pad=n=>String(n).padStart(2,'0');
 const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
 const dmy=s=>s.split('-').reverse().join('.');
-let S={t:{},dates:{},lead:{out:60,back:12},buf:0,cut:12,dayOv:null,dirOv:null,theme:'auto'};
+let S={t:{},dates:{},lead:{out:60,back:12},buf:{out:0,back:0},cut:12,dayOv:null,dirOv:null,theme:'auto'};
 try{
   const r=localStorage.getItem(K);
   if(r){
@@ -169,6 +169,7 @@ try{
     S=Object.assign(S,p);S.lead=Object.assign({out:60,back:12},S.lead);
   }
 }catch(e){}
+S.buf=(typeof S.buf==='number')?{out:S.buf,back:S.buf}:Object.assign({out:0,back:0},S.buf);
 KEYS.forEach(k=>{
   if(!S.t[k]||!S.t[k].trim()){S.t[k]=DEFS[k].t;S.dates[k]=DEFS[k].d}
   else if(!S.dates[k]){S.dates[k]=S.t[k].trim()===DEFS[k].t.trim()?DEFS[k].d:iso(new Date())}
@@ -201,7 +202,7 @@ let LK=key();
 function render(){
   if(key()!==LK&&document.activeElement!==$('ta')){grab();load()}
   const d=new Date(),now=d.getHours()*60+d.getMinutes();
-  const R=curDir(),D=curDay(),out=R==='out',place=out?'офиса':'дома',lead=S.lead[R],tot=Number(lead)+Number(S.buf);
+  const R=curDir(),D=curDay(),out=R==='out',place=out?'офиса':'дома',lead=S.lead[R],buf=Number(S.buf[R]),tot=Number(lead)+buf;
   $('ttl').textContent=out?'Горна баня → Даскалово':'Даскалово → Горна баня';
   $('now').textContent=d.toLocaleDateString('bg-BG',{weekday:'long',day:'numeric',month:'long'})+' · '+pad(d.getHours())+':'+pad(d.getMinutes())+(holiday(d)?' · празник':'');
   document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.d===D));
@@ -223,7 +224,7 @@ function render(){
   if(next){
     $('best').innerHTML=`<div class="lbl">Тръгни от ${place} в</div><div class="hero">${fmt(next.leave)}</div>
     <div>за влака в <b>${fmt(next.dep)}</b>${next.arr!=null?` (пристига ${fmt(next.arr)})`:''}</div>
-    <div class="lbl">След ${left(next.leave-now)} · ${lead} мин път${S.buf>0?` + ${S.buf} мин резерва`:''}</div>
+    <div class="lbl">След ${left(next.leave-now)} · ${lead} мин път${buf>0?` + ${buf} мин резерва`:''}</div>
     ${nx?`<div class="nx">Ако го изпуснеш: влак в <b>${fmt(nx.dep)}</b> · тръгни в <b>${fmt(nx.leave)}</b></div>`:'<div class="nx">След него няма друг влак днес.</div>'}`;
   }else{
     const tm=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1),tk=typeOf(tm)+'_'+R;
@@ -234,14 +235,14 @@ function render(){
     <div><div class="dep">${fmt(r.dep)}</div><div class="tag">${r.arr!=null?'→ '+fmt(r.arr):''} ${r.note}</div></div>
     <div class="lv">${r.ok?`от ${place} в<br><b>${fmt(r.leave)}</b>`:'<span class="late">изпуснат</span>'}</div></div>`).join('');
 }
-function load(){LK=key();const R=curDir();$('ta').value=S.t[LK]||'';$('walk').value=S.lead[R];$('buf').value=S.buf;$('cut').value=S.cut}
+function load(){LK=key();const R=curDir();$('ta').value=S.t[LK]||'';$('walk').value=S.lead[R];$('buf').value=S.buf[R];$('cut').value=S.cut}
 function store(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
 function grab(){
   const v=$('ta').value;
   if(v.trim()!==(S.t[LK]||'').trim()){S.dates[LK]=iso(new Date())}
   S.t[LK]=v;
   S.lead[LK.split('_')[1]]=Math.max(0,+$('walk').value||0);
-  S.buf=Math.max(0,+$('buf').value||0);
+  S.buf[LK.split('_')[1]]=Math.max(0,+$('buf').value||0);
   S.cut=Math.min(23,Math.max(1,+$('cut').value||12));
 }
 $('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;grab();S.dayOv={v:b.dataset.d,date:iso(new Date())};store();load();render()};
