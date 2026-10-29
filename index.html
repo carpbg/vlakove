@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="bg">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Влакове</title>
+<meta name="theme-color" content="#0b6e4f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Влакове">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+
+<style>
+:root{--bg:#f5f6f8;--card:#fff;--tx:#16202a;--mu:#66727f;--ac:#0b6e4f;--ac2:#e3f3ec;--bd:#dde1e6;--wa:#b4231a;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#12161b;--card:#1c222a;--tx:#e8ecf0;--mu:#97a3b0;--ac:#4cc39a;--ac2:#173229;--bd:#2c343e;--wa:#ff8a80;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#12161b;--card:#1c222a;--tx:#e8ecf0;--mu:#97a3b0;--ac:#4cc39a;--ac2:#173229;--bd:#2c343e;--wa:#ff8a80;color-scheme:dark}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif}
+main{max-width:560px;margin:0 auto;padding:16px}
+h1{font-size:20px;margin:0 0 2px}
+.sub{color:var(--mu);font-size:14px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:14px;padding:14px;margin-bottom:12px}
+.big{background:var(--ac2);border-color:var(--ac)}
+.lbl{font-size:13px;color:var(--mu)}
+.hero{font-size:34px;font-weight:700;color:var(--ac);line-height:1.1}
+.row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:10px 0;border-top:1px solid var(--bd)}
+.row:first-child{border-top:0}
+.row.past{opacity:.45}
+.dep{font-size:20px;font-weight:600}
+.lv{text-align:right;font-size:14px}
+.lv b{font-size:18px;color:var(--ac)}
+.tag{font-size:12px;color:var(--mu)}
+.late{color:var(--wa);font-size:13px}
+.nx{margin-top:6px;font-size:14px;color:var(--mu)}
+.nx b{color:var(--tx)}
+.info{font-size:13px;color:var(--mu);margin:-4px 4px 12px}
+.info.w{color:var(--wa)}
+.tabs{display:flex;gap:6px;margin-bottom:8px}
+.tabs button,.btn{flex:1;padding:9px;border-radius:10px;border:1px solid var(--bd);background:var(--card);color:var(--tx);font:inherit;cursor:pointer}
+.tabs button.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+textarea{width:100%;min-height:110px;border-radius:10px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);padding:10px;font:15px ui-monospace,monospace}
+input[type=number]{width:70px;padding:8px;border-radius:8px;border:1px solid var(--bd);background:var(--bg);color:var(--tx);font:inherit}
+.set{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:10px}
+a{color:var(--ac)}
+</style>
+</head>
+<body>
+<main>
+<h1>🚆 <span id="ttl"></span></h1>
+<div class="sub" id="now"></div>
+<div class="tabs" id="dirs"><button data-r="out">Горна баня → Даскалово</button><button data-r="back">Даскалово → Горна баня</button></div>
+
+<div class="card big" id="best"></div>
+<div class="info" id="info"></div>
+<div class="card"><div class="lbl" style="margin-bottom:4px">Всички влакове за деня</div><div id="list"></div></div>
+
+<div class="card">
+<div class="tabs" id="tabs">
+<button data-d="wd">Делник</button><button data-d="we">Уикенд / празник</button>
+</div>
+<div class="lbl" style="margin-bottom:6px">Часове на тръгване — по един на ред. По избор: час на пристигане и бележка, напр. <code>06:12-07:05 №2611</code></div>
+<textarea id="ta" placeholder="06:12-07:05&#10;07:40&#10;..."></textarea>
+<div class="set" style="margin-top:10px">
+<label><span id="wl"></span> (мин) <input type="number" id="walk" min="0" max="240"></label>
+<label>Резерва (мин) <input type="number" id="buf" min="0" max="60"></label>
+<label>Посоката се сменя в (ч) <input type="number" id="cut" min="1" max="23"></label>
+</div>
+<div class="lbl" style="margin:4px 0 6px">Тема</div>
+<div class="tabs" id="themes" style="margin-bottom:10px"><button data-t="auto">Като телефона</button><button data-t="light">Светла</button><button data-t="dark">Тъмна</button></div>
+<button class="btn" id="save">Запази</button>
+<p class="lbl">Разписанието е взето от <a href="https://www.bdz.bg" target="_blank" rel="noopener">bdz.bg</a>. Страницата не може да го чете автоматично, затова се въвежда ръчно и се пази в браузъра. Уикенд разписанието е взето за събота; неделя и празници може да се различават — проверявай.</p>
+</div>
+</main>
+<script>
+const K='gb-das-v1';
+const KEYS=['wd_out','wd_back','we_out','we_back'];
+const DEFS={
+wd_out:{d:'2026-10-27',t:`05:35-06:13 ПВ 50111
+06:23-06:52 КПВ 50201
+07:48-08:17 БВ 5611
+08:30-08:55 БВ 6621
+09:26-10:04 КПВ 50203
+10:35-10:58 ПВ 50113
+11:50-12:16 КПВ 50273
+12:50-13:10 БВ 5613
+14:00-14:28 КПВ 50275
+14:57-15:20 КПВ 50231
+16:05-16:34 КПВ 50205
+17:10-17:32 КПВ 50207
+17:40-18:10 КПВ 50233
+18:22-18:47 БВ 5617
+19:15-19:37 КПВ 50209
+19:40-20:04 БВ 5621
+20:48-21:15 КПВ 50211
+21:45-22:14 КПВ 50213
+22:55-23:17 КПВ 50215`},
+wd_back:{d:'2026-10-28',t:`04:28-04:54 КПВ 50200
+05:22-05:45 КПВ 50202
+06:06-06:31 КПВ 50230
+06:46-07:10 КПВ 50204
+07:08-07:31 БВ 5620
+07:30-07:56 БВ 1611
+08:09-08:38 КПВ 50206
+09:12-09:35 БВ 6620
+10:49-11:17 КПВ 50208
+12:09-12:33 ПВ 50110
+12:47-13:16 КПВ 50270
+14:57-15:25 КПВ 50272
+16:28-16:52 ПВ 50112
+17:21-17:49 БВ 5614
+18:01-18:30 КПВ 50210
+19:17-19:46 КПВ 50232
+20:34-20:56 БВ 6622
+21:31-21:53 БВ 5616`},
+we_out:{d:'2026-10-31',t:`05:35-06:13 ПВ 50111
+06:23-06:52 КПВ 50201
+07:48-08:17 БВ 5611
+08:30-08:55 БВ 6621
+09:26-10:04 КПВ 50203
+10:35-10:58 ПВ 50113
+12:25-12:52 КПВ 50283
+12:50-13:10 БВ 5613
+14:57-15:20 КПВ 50231
+16:05-16:34 КПВ 50205
+17:10-17:32 КПВ 50207
+17:40-18:10 КПВ 50233
+18:22-18:47 БВ 5617
+19:15-19:37 КПВ 50209
+19:40-20:04 БВ 5621
+20:48-21:15 КПВ 50211
+21:45-22:14 КПВ 50213
+22:55-23:17 КПВ 50215`},
+we_back:{d:'2026-10-31',t:`04:28-04:54 КПВ 50200
+05:22-05:45 КПВ 50202
+06:06-06:31 КПВ 50230
+06:46-07:10 КПВ 50204
+07:08-07:31 БВ 5620
+07:30-07:56 БВ 1611
+08:09-08:38 КПВ 50206
+09:12-09:35 БВ 6620
+10:49-11:17 КПВ 50208
+12:09-12:33 ПВ 50110
+13:27-13:51 КПВ 50280
+16:28-16:52 ПВ 50112
+17:21-17:49 БВ 5614
+18:01-18:30 КПВ 50210
+19:17-19:46 КПВ 50232
+20:34-20:56 БВ 6622
+21:31-21:53 БВ 5616`}};
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const dmy=s=>s.split('-').reverse().join('.');
+let S={t:{},dates:{},lead:{out:60,back:12},buf:0,cut:12,dayOv:null,dirOv:null,theme:'auto'};
+try{
+  const r=localStorage.getItem(K);
+  if(r){
+    const p=JSON.parse(r);
+    p.t=p.t||{};p.dates=p.dates||{};
+    KEYS.forEach(k=>{if(typeof p[k]==='string'){p.t[k]=p[k];delete p[k]}});
+    if(typeof p.wd==='string'){if(!p.t.wd_out)p.t.wd_out=p.wd;delete p.wd}
+    if(typeof p.we==='string'){if(!p.t.we_out)p.t.we_out=p.we;delete p.we}
+    if(p.walk!=null&&!p.lead){p.lead={out:Number(p.walk),back:12}}
+    delete p.walk;delete p.day;delete p.dir;
+    S=Object.assign(S,p);S.lead=Object.assign({out:60,back:12},S.lead);
+  }
+}catch(e){}
+KEYS.forEach(k=>{
+  if(!S.t[k]||!S.t[k].trim()){S.t[k]=DEFS[k].t;S.dates[k]=DEFS[k].d}
+  else if(!S.dates[k]){S.dates[k]=S.t[k].trim()===DEFS[k].t.trim()?DEFS[k].d:iso(new Date())}
+});
+const fmt=m=>{m=((m%1440)+1440)%1440;return pad(Math.floor(m/60))+':'+pad(m%60)};
+const hm=s=>{const [h,m]=s.split(':').map(Number);return h*60+m};
+function easter(y){const a=y%4,b=y%7,c=y%19,d=(19*c+15)%30,e=(2*a+4*b-d+34)%7,m=Math.floor((d+e+114)/31),dd=(d+e+114)%31+1;return new Date(y,m-1,dd+13)}
+function holiday(dt){
+  const k=pad(dt.getMonth()+1)+'-'+pad(dt.getDate());
+  if(['01-01','03-03','05-01','05-06','05-24','09-06','09-22','12-24','12-25','12-26'].includes(k))return true;
+  const e=easter(dt.getFullYear());
+  for(let i=-2;i<=1;i++){if(iso(new Date(e.getFullYear(),e.getMonth(),e.getDate()+i))===iso(dt))return true}
+  return false;
+}
+const typeOf=d=>(d.getDay()%6===0||holiday(d))?'we':'wd';
+const slot=()=>new Date().getHours()<S.cut?'am':'pm';
+function curDay(){const d=new Date();return(S.dayOv&&S.dayOv.date===iso(d))?S.dayOv.v:typeOf(d)}
+function curDir(){const d=new Date();return(S.dirOv&&S.dirOv.date===iso(d)&&S.dirOv.slot===slot())?S.dirOv.v:(slot()==='am'?'back':'out')}
+const key=()=>curDay()+'_'+curDir();
+function parse(t){
+  const seen={};
+  return t.split('\n').map(l=>{
+    const m=l.match(/(\d{1,2}:\d{2})(?:\s*[-–>→]\s*(\d{1,2}:\d{2}))?\s*(.*)/);
+    if(!m)return null;
+    return{dep:hm(m[1]),arr:m[2]?hm(m[2]):null,note:(m[3]||'').trim()};
+  }).filter(Boolean).filter(t=>{const k=t.dep+'-'+t.arr;if(seen[k])return false;seen[k]=1;return true}).sort((a,b)=>a.dep-b.dep);
+}
+const left=m=>{if(m<0)return'';const h=Math.floor(m/60);return h?`${h} ч ${m%60} мин`:`${m} мин`};
+let LK=key();
+function render(){
+  if(key()!==LK&&document.activeElement!==$('ta')){grab();load()}
+  const d=new Date(),now=d.getHours()*60+d.getMinutes();
+  const R=curDir(),D=curDay(),out=R==='out',place=out?'офиса':'дома',lead=S.lead[R],tot=Number(lead)+Number(S.buf);
+  $('ttl').textContent=out?'Горна баня → Даскалово':'Даскалово → Горна баня';
+  $('now').textContent=d.toLocaleDateString('bg-BG',{weekday:'long',day:'numeric',month:'long'})+' · '+pad(d.getHours())+':'+pad(d.getMinutes())+(holiday(d)?' · празник':'');
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.d===D));
+  document.querySelectorAll('#dirs button').forEach(b=>b.classList.toggle('on',b.dataset.r===R));
+  $('wl').textContent=out?'Път офис → гара':'Път до гара Даскалово';
+  const k=key(),trains=parse(S.t[k]||'');
+  const sd=S.dates[k],age=Math.floor((d-new Date(sd+'T00:00:00'))/864e5);
+  let w='';
+  if(age>60)w=`Старо разписание (${age} дни) — провери за промени в bdz.bg.`;
+  else if(d.getMonth()===11&&sd<d.getFullYear()+'-12-01')w='Наближава промяна на разписанието (декември) — провери bdz.bg.';
+  $('info').className='info'+(w?' w':'');
+  $('info').textContent='Разписание от '+dmy(sd)+(w?' · '+w:'');
+  if(!trains.length){
+    $('best').innerHTML='<div class="lbl">Няма въведено разписание</div><div>Добави часовете по-долу от bdz.bg.</div>';
+    $('list').innerHTML='';return;
+  }
+  const rows=trains.map(t=>({...t,leave:t.dep-tot,ok:t.dep-tot>=now}));
+  const oks=rows.filter(r=>r.ok),next=oks[0],nx=oks[1];
+  if(next){
+    $('best').innerHTML=`<div class="lbl">Тръгни от ${place} в</div><div class="hero">${fmt(next.leave)}</div>
+    <div>за влака в <b>${fmt(next.dep)}</b>${next.arr!=null?` (пристига ${fmt(next.arr)})`:''}</div>
+    <div class="lbl">След ${left(next.leave-now)} · ${lead} мин път${S.buf>0?` + ${S.buf} мин резерва`:''}</div>
+    ${nx?`<div class="nx">Ако го изпуснеш: влак в <b>${fmt(nx.dep)}</b> · тръгни в <b>${fmt(nx.leave)}</b></div>`:'<div class="nx">След него няма друг влак днес.</div>'}`;
+  }else{
+    const tm=new Date(d.getFullYear(),d.getMonth(),d.getDate()+1),tk=typeOf(tm)+'_'+R;
+    const f=parse(S.t[tk]||'')[0]||rows[0];
+    $('best').innerHTML=`<div class="lbl">Няма повече влакове днес</div><div class="hero">утре ${fmt(f.dep-tot)}</div><div>за влака в <b>${fmt(f.dep)}</b> <span class="tag">(${typeOf(tm)==='we'?'уикенд/празник':'делник'})</span></div>`;
+  }
+  $('list').innerHTML=rows.map(r=>`<div class="row${r.ok?'':' past'}">
+    <div><div class="dep">${fmt(r.dep)}</div><div class="tag">${r.arr!=null?'→ '+fmt(r.arr):''} ${r.note}</div></div>
+    <div class="lv">${r.ok?`от ${place} в<br><b>${fmt(r.leave)}</b>`:'<span class="late">изпуснат</span>'}</div></div>`).join('');
+}
+function load(){LK=key();const R=curDir();$('ta').value=S.t[LK]||'';$('walk').value=S.lead[R];$('buf').value=S.buf;$('cut').value=S.cut}
+function store(){try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}}
+function grab(){
+  const v=$('ta').value;
+  if(v.trim()!==(S.t[LK]||'').trim()){S.dates[LK]=iso(new Date())}
+  S.t[LK]=v;
+  S.lead[LK.split('_')[1]]=Math.max(0,+$('walk').value||0);
+  S.buf=Math.max(0,+$('buf').value||0);
+  S.cut=Math.min(23,Math.max(1,+$('cut').value||12));
+}
+$('tabs').onclick=e=>{const b=e.target.closest('button');if(!b)return;grab();S.dayOv={v:b.dataset.d,date:iso(new Date())};store();load();render()};
+$('dirs').onclick=e=>{const b=e.target.closest('button');if(!b)return;grab();S.dirOv={v:b.dataset.r,date:iso(new Date()),slot:slot()};store();load();render()};
+$('save').onclick=()=>{grab();store();render();$('save').textContent='Запазено ✓';setTimeout(()=>$('save').textContent='Запази',1200)};
+function applyTheme(){
+  const t=S.theme||'auto',r=document.documentElement;
+  if(t==='auto')r.removeAttribute('data-theme');else r.setAttribute('data-theme',t);
+  document.querySelectorAll('#themes button').forEach(b=>b.classList.toggle('on',b.dataset.t===t));
+}
+$('themes').onclick=e=>{const b=e.target.closest('button');if(!b)return;S.theme=b.dataset.t;store();applyTheme()};
+applyTheme();
+load();render();setInterval(render,30000);
+if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
+</script>
+</body>
+</html>
